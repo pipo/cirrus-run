@@ -14,7 +14,7 @@ from jinja2 import Template
 
 from . import CirrusAPI
 from .throbber import ProgressBar
-from .queries import build_log, get_repo, create_build, wait_build, CirrusBuildError
+from .queries import build_log, get_repo, create_build, wait_build, CirrusBuildError, CirrusCreditsError
 
 log = logging.getLogger(__name__)
 
@@ -47,10 +47,12 @@ def run(args, retry_index=0):
     print('Build created: {}'.format(build_url))
     with ProgressBar('' if args.verbose else '.'):
         try:
-            wait_build(api, build_id, abort=args.timeout*60)
+            wait_build(api, build_id, abort=args.timeout*60, credits_error_message=args.cirrus_out_of_ci_credits_message)
             rc, status, message = 0, 'successful', ''
         except CirrusBuildError:
             rc, status, message = 1, 'failed', ''
+        except CirrusCreditsError:
+            rc, status, message = 3, 'error', 'Out of CI credits'
         except Exception as exc:
             rc, status, message = 2, 'error', '{exception}: {text}'.format(
                                         exception=exc.__class__.__name__,
@@ -223,6 +225,15 @@ def parse_args(*a, **ka):
             'If any marker is found in Cirrus CI output for a failed build, '
             'the build is retried once more. Default: ${}'
         ).format(ENVIRONMENT['flaky_markers']),
+    )
+    parser.add_argument(
+        '--cirrus-out-of-ci-credits-message',
+        default='Monthly compute limit exceeded',
+        help=(
+            'Error message passed via "notifications" from Cirrus CI reported'
+            'when the CI job failed due to lack of CI credits.'
+            'Default: "Monthly compute limit exceeded"'
+        ),
     )
     args = parser.parse_args(*a, **ka)
 
