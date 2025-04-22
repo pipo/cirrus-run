@@ -103,7 +103,7 @@ def wait_build(api, build_id: str, delay=3, abort=60*60):
     while time() < time_start + abort:
         response = api(query, params)
         status = response['build']['status']
-        log.info('build {}: {}'.format(build_id, status))
+        log.info('build https://cirrus-ci.com/build/{}: {}'.format(build_id, status))
         if status in {'COMPLETED'}:
             return True
         if status in {'CREATED', 'TRIGGERED', 'EXECUTING'}:
