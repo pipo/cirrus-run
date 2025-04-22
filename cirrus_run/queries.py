@@ -22,6 +22,8 @@ class CirrusQueryError(ValueError):
 class CirrusBuildError(RuntimeError):
     '''Raised on build failures'''
 
+class CirrusCreditsError(RuntimeError):
+    '''Raised when build fails due to lack of CI credits'''
 
 class CirrusTimeoutError(RuntimeError):
     '''Raised when build takes too long'''
@@ -85,7 +87,7 @@ def create_build(api: CirrusAPI,
     return answer['createBuild']['build']['id']
 
 
-def wait_build(api, build_id: str, delay=3, abort=60*60):
+def wait_build(api, build_id: str, delay=3, abort=60*60, credits_error_message=None):
     '''Wait until build finishes'''
     ERROR_CONFIRM_TIMES = 3
 
@@ -93,6 +95,11 @@ def wait_build(api, build_id: str, delay=3, abort=60*60):
         query GetBuild($build: ID!) {
             build(id: $build) {
                 status
+                tasks {
+                    notifications {
+                        message
+                    }
+                }
             }
         }
     '''
@@ -116,6 +123,12 @@ def wait_build(api, build_id: str, delay=3, abort=60*60):
                 sleep(2 * delay / (ERROR_CONFIRM_TIMES - 1))
                 continue
             else:
+                if credits_error_message is not None:
+                    for task in response['build']['tasks']:
+                        for notif in task['notifications']:
+                            if credits_error_message in notif['message']:
+                                raise CirrusCreditsError('build {} ran out of CI credits'.format(build_id))
+
                 raise CirrusBuildError('build {} was terminated: {}'.format(build_id, status))
         raise ValueError('build {} returned unknown status: {}'.format(build_id, status))
     raise CirrusTimeoutError('build {} timed out'.format(build_id))

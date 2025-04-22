@@ -88,6 +88,12 @@ optional arguments:
                         marker per line. If any marker is found in Cirrus CI
                         output for a failed build, the build is retried once
                         more. Default: $CIRRUS_FLAKY_MARKERS_FILE
+
+return values:
+  - 0: The cirrus job was successful
+  - 1: The job failed
+  - 2: Error in 'cirrus-run'
+  - 3: The Cirrus CI job ran out of CI minutes
 ```
 
 
